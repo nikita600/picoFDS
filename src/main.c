@@ -5,116 +5,24 @@
 #include "hardware/gpio.h"
 #include "pico/binary_info.h"
 
-#include "f_util.h"
-#include "ff.h"
-#include "rtc.h"
-#include "hw_config.h"
-
 #include "pins.h"
-#include "fds_rom_a.h"
-#include "fds_rom_b.h"
+#include "fds.h"
+#include "sd_card.h"
 
-const uint32_t cycle_time_sleep_us = 5;
+#define ONE_SECOND 1000000
+#define READ_DATA_DELAY0 5
+#define READ_DATA_DELAY1 6
+#define LED_DELAY 250
+#define GAP_SIZE 28300
 
-void rom_test()
+static inline init_fds()
 {
-    unsigned char buffer[65500UL + 1];
-
-    for (int i = 0; i < fds_rom_a_size; ++i)
-    {
-        unsigned char rom_byte = fds_rom_a[i];
-        for (int b = 0; b < 8; ++b)
-        {
-            buffer[i] = (unsigned char)(fds_rom_a[i] << 1);
-        }
-    }
-
-    for (int i = 0; i < fds_rom_a_size; ++i)
-    {
-        unsigned char rom_byte = fds_rom_b[i];
-        for (int b = 0; b < 8; ++b)
-        {
-            buffer[i] = (unsigned char)(fds_rom_b[i] << 1);
-        }
-    }
-}
-
-void init_in_pin(uint pin_idx)
-{
-    gpio_init(pin_idx);
-    gpio_set_dir(pin_idx, GPIO_IN);
-    gpio_pull_down(pin_idx);
-}
-
-void init_out_pin(uint pin_idx)
-{
-    gpio_init(pin_idx);
-    gpio_set_dir(pin_idx, GPIO_OUT);
-}
-
-void init_pins()
-{
-    init_out_pin(LED_PIN);
-
-    init_in_pin(READY_PIN);
-    init_in_pin(MEDIA_SET_PIN);
-    init_in_pin(MOTOR_ON_PIN);
-    init_in_pin(READ_DATA_PIN);
-    init_in_pin(WRITABLE_MEDIA_PIN);
-
-    init_in_pin(WRITE_PIN);
-    init_in_pin(SCAN_MEDIA_PIN);
-    init_in_pin(WRITE_DATA_PIN);
-    init_in_pin(STOP_MOTOR);
-}
-
-bool is_ready()
-{
-    return !gpio_get(READY_PIN);
-}
-
-bool is_media_set()
-{
-    return !gpio_get(MEDIA_SET_PIN);
-}
-
-bool is_motor_on()
-{
-    return gpio_get(MOTOR_ON_PIN);
-}
-
-bool is_scan_media()
-{
-    return !gpio_get(SCAN_MEDIA_PIN);     
-}
-
-void write_to_sd_card(const void* buffer, uint size)
-{
-    sd_card_t *pSD = sd_get_by_num(0);
-    FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
-    if (FR_OK != fr)
-    {
-        panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-    }
-
-    FIL fil;
-    const char* const filename = "fds_dump.bin";
-    fr = f_open(&fil, filename, FA_CREATE_NEW | FA_WRITE);
-    if (FR_OK != fr && FR_EXIST != fr)
-        panic("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
-
-    UINT bw = 0;
-
-    f_write(&fil, buffer, size, &bw);
-
-    fr = f_close(&fil);
-    if (FR_OK != fr)
-    {
-        printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
-    }
-
-    f_unmount(pSD->pcName);
-}
+    fds_set_media_set(false);
+    fds_set_motor_on(true);
+    fds_set_read_data(false);
+    fds_set_ready(false);
+    fds_set_writable(false);
+} 
 
 int main() 
 {
@@ -122,63 +30,134 @@ int main()
     time_init();
 
     init_pins();
+    init_fds();
+    
+    gpio_put(LED_PIN, 0);
+
+    bool led_data = false;
+    bool read_data_clk = false;
+    
+    bool is_gap_sending = false;
+    bool is_data_sending = false;
+
+    int bit_sended = 0;
+    int current_byte = 0;
+
+    uint64_t led_delay = to_us_since_boot(make_timeout_time_ms(LED_DELAY));
+    uint64_t read_data_delay = to_us_since_boot(make_timeout_time_us(READ_DATA_DELAY0));
+
+    //wait_for_button_down();
 
     uint buffer_idx = 0;
-    unsigned char buffer[131000];
-    memset(buffer, 0, 131000);
-
-    bool write_pending = false;
-
-    uint byte_idx = 0;
-    unsigned char byte_data = 0;
-
+    unsigned char buffer[DISK_SIDE_SIZE];
+    read_disk_side(0, buffer);
     gpio_put(LED_PIN, 1);
+
+    fds_set_media_set(true);
+    fds_set_writable(true);
 
     while (true) 
     {
-        if (is_scan_media())
+        uint64_t current_time = to_us_since_boot(get_absolute_time());
+
+        if (!is_data_sending)
         {
-            gpio_put(LED_PIN, 0);
-            write_pending = true;
-
-            bool data = gpio_get(READ_DATA_PIN);
-
-            byte_idx++;
-            byte_data = (unsigned char)(byte_data | (data << byte_idx));
-
-            if (byte_idx == 8)
+            if (fds_is_scan_media() && !fds_is_stop_motor())
             {
-                buffer[buffer_idx] = byte_data;
-                
-                byte_idx = 0;
-                byte_data = 0;
-                
+                fds_set_motor_on(true);
+
+                is_data_sending = true;
+                is_gap_sending = true;
+
+                current_byte = buffer[buffer_idx];
                 buffer_idx++;
-                if (buffer_idx == 131000)
+                printf("start sent: %i\n", buffer_idx);
+                if (buffer_idx > DISK_SIDE_SIZE)
                 {
                     buffer_idx = 0;
                 }
             }
-
-            sleep_us(10);
         }
         else
         {
-            if (write_pending)
+            // DATA
+            if (current_time >= read_data_delay)
             {
-                // Write File
+                read_data_delay = to_us_since_boot(make_timeout_time_us(read_data_clk ? READ_DATA_DELAY1 : READ_DATA_DELAY1));
 
-                write_to_sd_card(buffer, 131000);
+                read_data_clk = !read_data_clk;
+                    gpio_put(LED_PIN, read_data_clk);
 
-                memset(buffer, 0, 131000);
-                write_pending = false;
-                gpio_put(LED_PIN, 1);
+                    if (is_gap_sending)
+                    {
+                        fds_set_read_data(read_data_clk);
+
+                        bit_sended++;
+                        if (bit_sended >= GAP_SIZE)
+                        {
+                            bit_sended = 0;
+                            is_gap_sending = false;
+                        }
+                    }
+                    else
+                    {
+                        if (read_data_clk)
+                        {
+                            fds_set_read_data(read_data_clk);
+                        }
+                        else
+                        {
+                            if (!fds_is_write())
+                            {
+                                fds_set_read_data((current_byte >> bit_sended) & 1);
+                                bit_sended++;
+
+                            if (bit_sended == 8)
+                            {
+                                bit_sended = 0;
+                                current_byte = buffer[buffer_idx];
+                                buffer_idx++;
+
+                                if (buffer_idx % 1000 == 0)
+                                    printf("sent: %i\n", buffer_idx);
+                                
+                                if (buffer_idx > DISK_SIDE_SIZE)
+                                {
+                                    buffer_idx = 0;
+                                    fds_set_motor_on(false);
+                                    is_data_sending = false;
+                                    is_gap_sending = false;
+
+                                }
+                            }
+                            }
+                            else
+                            {
+                                fds_set_read_data(read_data_clk);
+                            }
+                            
+                        }
+                    }
+            }
+
+            if (!fds_is_scan_media() || fds_is_stop_motor())
+            {
+                fds_set_motor_on(false);
+
+                buffer_idx = 0;
+                is_data_sending = false;
+                is_gap_sending = false;
+
+                gpio_put(LED_PIN, false);
             }
         }
 
-        //gpio_put(LED_PIN, 0);
-        //sleep_us(cycle_time_sleep_us);
-        //gpio_put(LED_PIN, 1);
-        //sleep_us(cycle_time_sleep_us);
+        //if (current_time >= led_delay)
+        //{
+        //    led_delay = to_us_since_boot(make_timeout_time_ms(LED_DELAY));
+//
+        //    gpio_put(LED_PIN, led_data);
+        //    led_data = !led_data;
+        //}
     }
 }

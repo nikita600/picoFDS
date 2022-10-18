@@ -13,14 +13,17 @@ add_subdirectory(../../picoSD/FatFs_SPI build)
 
 add_executable(picoFDS
     main.c
+    fds.c
+    sd_card.c
     hw_config.c
 )
 
 target_link_libraries(picoFDS
     pico_stdlib
+    pico_multicore
     FatFs_SPI
 )
 
-pico_enable_stdio_usb(picoFDS 1)
+pico_enable_stdio_usb(picoFDS 0)
 pico_enable_stdio_uart(picoFDS 1)
 pico_add_extra_outputs(picoFDS)
