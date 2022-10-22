@@ -22,6 +22,8 @@
     "cortex-debug.variableUseNaturalFormat": true,
     "files.associations": {
         "ff.h": "c",
-        "pins.h": "c"
+        "pins.h": "c",
+        "sd_card.h": "c",
+        "cstddef": "c"
     }
 }

@@ -7,7 +7,7 @@ void wait_for_button_down()
 {
     while (true)
     {
-        bool button_pressed = is_button_down();
+        bool button_pressed = fds_is_button_down();
         if (button_pressed)
         {
             break;
