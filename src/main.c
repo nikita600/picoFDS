@@ -7,12 +7,15 @@
 
 #include "fds.h"
 #include "sd_card.h"
+#include "clock_hack.h"
 
 #define ONE_SECOND 1000000
-#define READ_DATA_DELAY0 5
+#define READ_DATA_DELAY0 5.5
 #define READ_DATA_DELAY1 6
 #define LED_DELAY 250
-#define GAP_SIZE 28300
+#define GAP_SIZE 28300 * 2
+
+//#define DEBUG 0
 
 uint64_t current_time = 0;
 uint64_t led_delay = 0;
@@ -31,20 +34,7 @@ int current_data = 0;
 uint buffer_idx = 0;
 unsigned char buffer[DISK_SIDE_SIZE];
 
-const uint8_t expand[]=
-{ 
-    0xaa, 0xa9, 0xa6, 0xa5, 0x9a, 0x99, 0x96, 0x95,
-    0x6a, 0x69, 0x66, 0x65, 0x5a, 0x59, 0x56, 0x55
-};
-
-static inline void init_fds()
-{
-    fds_set_media_set(false);
-    fds_set_motor_on(false);
-    fds_set_read_data(false);
-    fds_set_ready(false);
-    fds_set_writable(false);
-} 
+const uint8_t expand[]={ 0xaa, 0xa9, 0xa6, 0xa5, 0x9a, 0x99, 0x96, 0x95, 0x6a, 0x69, 0x66, 0x65, 0x5a, 0x59, 0x56, 0x55 };
 
 static inline void print_fds_state()
 {
@@ -53,8 +43,11 @@ static inline void print_fds_state()
     bool is_write = fds_is_write();
     bool write_data = fds_get_write_data();
     
+#ifdef DEBUG
     printf("scan: %x, stop: %x, write: %x, write_data: %x\n",
      is_scan_media, is_stop_motor, is_write, write_data);
+#endif
+
 }
 
 static inline void fds_read_next_byte()
@@ -64,7 +57,7 @@ static inline void fds_read_next_byte()
 
     current_data = expand[byte & 0x0F];
 	current_data |= expand[(byte & 0xF0) >> 4] << 8;
-
+    
     if (buffer_idx > DISK_SIDE_SIZE)
     {
         buffer_idx = 0;
@@ -78,13 +71,14 @@ static inline void update_current_time()
 
 static inline void fds_update_read_data_delay()
 {
-    read_data_delay = to_us_since_boot(make_timeout_time_us(read_data_clk ? READ_DATA_DELAY0 : READ_DATA_DELAY1));
+    read_data_delay = to_us_since_boot(make_timeout_time_us(READ_DATA_DELAY0)); // read_data_clk ? READ_DATA_DELAY0 : READ_DATA_DELAY1
 }
 
 static inline void fds_set_state(enum FDS_STATE state)
 {
     fds_state = state;
 
+#ifdef DEBUG
     switch (fds_state)
     {
         case fds_idle:
@@ -123,20 +117,30 @@ static inline void fds_set_state(enum FDS_STATE state)
             printf("unknown fds state: 0x%x\n", state);
             break;
     }
+#endif
+
 }
+
+static inline void init_fds()
+{
+    fds_set_media_set(false);
+    fds_set_motor_on(false);
+    fds_set_read_data(false);
+    fds_set_ready(false);
+    fds_set_writable(false);
+} 
 
 static inline void fds_set_disk_handler()
 {
-    //wait_for_button_down();
+    wait_for_button_down();
     fds_set_media_set(true);
     fds_set_writable(true);
-    fds_set_motor_on(true);
     fds_set_state(fds_scan_wait);
 }
 
 static inline void fds_scan_wait_handler()
 {
-    if (fds_is_scan_media() && fds_is_stop_motor())
+    if (fds_is_scan_media() && !fds_is_stop_motor())
     {
         fds_set_state(fds_motor_on);
     }
@@ -144,38 +148,44 @@ static inline void fds_scan_wait_handler()
 
 static inline void fds_motor_on_handler()
 {
+    fds_set_motor_on(true);
     fds_update_read_data_delay();
     fds_set_state(fds_send_gap);
 }
 
 static inline void fds_send_gap_handler()
 {
+    current_data = 0xAAAA;
+    
     while (fds_is_scan_media() && !fds_is_stop_motor())
     {
-        update_current_time();
+        fds_wait_for_sample();
+        fds_set_read_data(current_data & 1);
 
-        if (current_time < read_data_delay)
+        fds_wait_for_reset();
+        fds_set_read_data(false);
+
+        current_data >>= 1;
+        bit_sended++;
+
+        if (bit_sended % 16 == 0)
         {
-            continue;
+            current_data = 0xAAAA;
         }
 
-        fds_update_read_data_delay();
-
-        read_data_clk = !read_data_clk;
-
-        fds_set_read_data(read_data_clk);
-        bit_sended++;   
-
+    #if DEBUG
         if (bit_sended % 1000 == 0)
         {
             printf("fds_send_gap, sended: %i\n", bit_sended);
         }
+    #endif
 
         if (bit_sended >= GAP_SIZE)
         {
             bit_sended = 0;
+            fds_set_read_data(false);
             fds_set_state(fds_ready);
-            break;
+            return;
         }
     }
 }
@@ -185,22 +195,19 @@ static inline void fds_ready_handler()
     fds_read_next_byte();
     fds_set_ready(true);
     fds_set_state(fds_read_write);
+
+    sleep_ms(150);
 }
 
 static inline void fds_read_write_handler()
 {
     while (fds_is_scan_media() && !fds_is_stop_motor())
     {
-        update_current_time();
-
-        if (current_time < read_data_delay)
-        {
-            continue;
-        }
-
-        fds_update_read_data_delay();
-
+        fds_wait_for_sample();
         fds_set_read_data(current_data & 1);
+
+        fds_wait_for_reset();
+        fds_set_read_data(false);
 
         current_data >>= 1;
         bit_sended++;
@@ -214,14 +221,16 @@ static inline void fds_read_write_handler()
             if (buffer_idx == 0)
             {
                 fds_set_state(fds_read_write_end);
-                break;
+                return;
             }
 
+    #if DEBUG
             if (buffer_idx % 1000 == 0)
             {
                 printf("sent: %i\n", buffer_idx);
                 //print_fds_state();
             }
+    #endif
         }
     }
 }
@@ -254,9 +263,10 @@ int main()
 
     led_delay = to_us_since_boot(make_timeout_time_ms(LED_DELAY));
 
-    wait_for_button_down();
+    //wait_for_button_down();
     
     read_disk_side(0, buffer);
+
     gpio_put(LED_PIN, 1);
 
     while (true) 

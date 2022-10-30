@@ -5,7 +5,7 @@
 #include "hardware/gpio.h"
 
 // Constants
-#define DISK_SIDE_SIZE 65500
+#define DISK_SIDE_SIZE 0x10000 //65500
 #define TRANSFER_FREQ_HZ 96400 / 2
 
 enum FDS_STATE
@@ -21,6 +21,7 @@ enum FDS_STATE
 };
 
 #define LED_PIN 25
+#define FLIP_BUTTON_PIN 11
 
 // Debug
 #define DEBUG_01_PIN 0
@@ -36,8 +37,6 @@ enum FDS_STATE
 #define STOP_MOTOR 10       // OUT, inverted
 #define WRITE_PIN 2         // OUT, inverted
 #define WRITE_DATA_PIN 4    // OUT
-
-#define FLIP_BUTTON_PIN 11
 
 static inline void init_in_pin(uint pin_idx, bool disable_pull, bool pull_up)
 {
@@ -86,19 +85,18 @@ static inline void init_out_pin(uint pin_idx, bool disable_pull, bool pull_up)
 static inline void init_pins()
 {
     init_out_pin(LED_PIN, false, true);
-
-    init_out_pin(READY_PIN, true, false);
-    init_out_pin(MEDIA_SET_PIN, true, false);
-    init_out_pin(MOTOR_ON_PIN, true, false);
-    init_out_pin(READ_DATA_PIN, false, false);
-    init_out_pin(WRITABLE_MEDIA_PIN, true, false);
-
-    init_in_pin(WRITE_PIN, false, true);
-    init_in_pin(SCAN_MEDIA_PIN, false, true);
-    init_in_pin(WRITE_DATA_PIN, false, true);
-    init_in_pin(STOP_MOTOR, false, true);
-
     init_in_pin(FLIP_BUTTON_PIN, false, true);
+
+    init_out_pin(READY_PIN, false, true);
+    init_out_pin(MEDIA_SET_PIN, false, true);
+    init_out_pin(MOTOR_ON_PIN, false, false);
+    init_out_pin(READ_DATA_PIN, false, false);
+    init_out_pin(WRITABLE_MEDIA_PIN, false, true);
+
+    init_in_pin(WRITE_PIN, false, false);
+    init_in_pin(SCAN_MEDIA_PIN, false, false);
+    init_in_pin(WRITE_DATA_PIN, false, false);
+    init_in_pin(STOP_MOTOR, false, false);
 }
 
 // FLIP DISK BUTTON
