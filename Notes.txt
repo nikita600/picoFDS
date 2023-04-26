@@ -1,0 +1,76 @@
+FDS Read Sequence
+=======================================
+
+1. /MEDIA_SET = 0
+2. /STOP_MOTOR = 1 && /SCAN_MEDIA = 0
+3. MOTOR_ON = 1
+
+=======================================
+Exciting Soccer read sequence
+
+init gap: 65082 - 79552, delta: 14470 (154.69225 ms) ~ 10.69 us
+block 01: 79552 - 79962, delta: 410
+
+
+=======================================
+FDS RAM adapter connector size
+
+Width: 15 mm
+Height: 2 mm
+Depth: 10 mm
+Contacts: 5 mm
+Step: 2.25 mm 
+
+=======================================
+
+FDS RAM adapter pinout
+
+ 01 02 03 04 05 06
+/==+==+==+==+==+=\
+|                 |
+|==+==+==+==+==+==|
+ 07 08 09 10 11 12
+ 
+01 - /STOP MOTOR
+02 - /MEDIA SET
+03 - NC
+04 - MOTOR ON /BATTERY GOOD
+05 - GND
+06 - +5V
+
+07 - /READY
+08 - READ DATA
+09 - /WRITABLE MEDIA
+10 - WRITE DATA
+11 - /SCAN MEDIA
+12 - /WRITE
+
+=======================================
+
+Pin 1 (Output) /write
+While active, this signal indicates that data appearing on the "write data" signal pin is to be written to the storage media.
+
+Pin 3 (Output) /scan media
+While inactive, this instructs the storage media pointer to be reset (and stay reset) at the beginning of the media.
+When active, the media pointer is to be advanced at a constant rate, and data progressively transferred to/from the media (via the media pointer).
+
+Pin 5 (Output) write data
+This is the serial data the RAM adaptor issues to be written to the storage media on the "/write" condition.
+
+Pin 6 (Input) motor on, battery good
+Applicable mostly to the FDS disk drive unit only, after the RAM adaptor issues a "/scan media" signal, it will check the status of this input to see if the disk drive motor has turned on. If this input is found to be inactive, the RAM adaptor interprets this as the disk drive's batteries having failed. Essentially, this signal's operation is identical to the above mentioned "motor power" signal, except that this is a TTL signal version of it.
+
+Pin 7 (Input) /writable media
+When active, this signal indicates to the RAM adaptor that the current media is not write protected.
+
+Pin 9 (Input) read data
+When "/scan media" is active, data that is progressively read off the storage media (via the media pointer) is expected to appear here.
+
+Pin 10 (Input) /media set
+When active, this signal indicates the presence of valid storage media.
+
+Pin 11 (Input) /ready
+Applicable mostly to the FDS disk drive unit only, the falling edge of this signal would indicate to the RAM adaptor that the disk drive has acknowledged the "/scan media" signal, and the disk drive head is currently at the beginning of the disk (most outer track). While this signal remains active, this indicates that the disk head is advancing across the disk's surface, and apropriate data can be transferred to/from the disk. This signal would then go inactive if the head advances to the end of the disk (most inner track), or the "/scan media" signal goes inactive.
+
+Pin 12 (Output) /stop motor
+Applicable mostly to the FDS disk drive unit only, the falling edge of this signal would instruct the drive to stop the current scan of the disk. 
