@@ -18,9 +18,16 @@ add_executable(picoFDS
     hw_config.c
 )
 
-target_link_libraries(picoFDS
+pico_generate_pio_header(picoFDS ${CMAKE_CURRENT_LIST_DIR}/fds_read.pio)
+
+target_sources(picoFDS PRIVATE main.c)
+
+target_link_libraries(picoFDS PRIVATE
     pico_stdlib
     pico_multicore
+    hardware_pio
+    hardware_pwm
+    hardware_clocks
     FatFs_SPI
 )
 

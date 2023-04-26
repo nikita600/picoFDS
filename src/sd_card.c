@@ -15,7 +15,7 @@ void read_from_sd_card(const void* buffer, uint size)
     }
 
     FIL fil;
-    const char* const filename = "ROM.QD";
+    const char* const filename = "ROM.DKA";
     fr = f_open(&fil, filename, FA_READ);
     if (FR_OK != fr && FR_EXIST != fr)
         panic("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);

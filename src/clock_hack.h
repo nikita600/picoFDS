@@ -37,8 +37,6 @@ static inline void wait_for_1ms()
 static inline void fds_wait_for_reset()
 {
     wait_for_1ms();
-    wait_for_0_1ms();
-    wait_for_0_1ms();
 }
 
 // sleeps for 20746 ns(p) 
@@ -48,4 +46,8 @@ static inline void fds_wait_for_sample()
     wait_for_1ms();
     wait_for_1ms();
     wait_for_1ms();
+    //wait_for_1ms();
+
+    //wait_for_0_1ms();
+    //wait_for_0_1ms();
 }
