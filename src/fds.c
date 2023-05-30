@@ -15,7 +15,7 @@ void wait_for_button_down()
     }
 }
 
-void read_disk_side(int side, const void* trg_buffer)
+void read_disk_side(int side, void* trg_buffer)
 {
     memset(trg_buffer, 0, DISK_SIDE_SIZE);
 

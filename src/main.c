@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <memory.h>
 
-
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
@@ -14,9 +13,8 @@
 #include "fds.h"
 #include "sd_card.h"
 
-#define FDS_CLOCK_HZ 96400
-#define FDS_CLOCK_US 10.3734
-#define PIO_FDS_CLOCK 800000
+#include "fds/ram_adapter.h"
+
 
 uint buffer_idx = 0;
 uint buffer_byte = 0;
@@ -29,31 +27,17 @@ static inline void led_set_active(bool active)
     gpio_put(LED_PIN, active);
 }
 
-static inline uint setup_fds_read_pio(PIO pio, uint read_data_pin)
-{
-    uint offset = pio_add_program(pio, &fds_read_program);
-    uint sm = pio_claim_unused_sm(pio, true);
-    fds_read_program_init(pio, sm, offset, read_data_pin);
-
-    uint len = fds_read_program.length;
-
-    uint clock_hz = clock_get_hz(clk_sys);
-    float pio_clk_div = (float)(clock_hz / (float)PIO_FDS_CLOCK);//FDS_CLOCK_HZ);
-    pio_sm_set_clkdiv(pio, sm, pio_clk_div);
-
-    return sm;
-}
-
 #define TEST_WORD 0xAAAA
 
 int main() 
 {
     stdio_init_all();
 
-    read_disk_side(0, buffer);
+    pio_ctx fds_read_ctx;
+    fds_ram_adapter ram_adapter = create_fds_ram_adapter();
+    setup_fds_ram_adapter(&ram_adapter, &fds_read_ctx);
 
-    PIO fds_read_pio = pio0;
-    uint fds_read_sm = setup_fds_read_pio(fds_read_pio, READ_DATA_PIN);
+    //read_disk_side(0, buffer);
     
     led_set_active(true);
     
@@ -62,7 +46,7 @@ int main()
 
     while (true)
     {
-        pio_sm_put_blocking(fds_read_pio, fds_read_sm, (data & 1));
+        pio_sm_put_blocking(fds_read_ctx.pio, fds_read_ctx.sm, (data & 1));
 
         data = data >> 1;
         bit_count++;
