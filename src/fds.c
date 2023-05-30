@@ -19,7 +19,7 @@ void read_disk_side(int side, const void* trg_buffer)
 {
     memset(trg_buffer, 0, DISK_SIDE_SIZE);
 
-    read_from_sd_card(trg_buffer, DISK_SIDE_SIZE);
+    read_from_sd_card("ROM.fds", trg_buffer, DISK_SIDE_SIZE);
 }
 
 /*
@@ -162,10 +162,10 @@ static inline void fds_send_gap_handler()
 {
     while (fds_is_scan_media() && !fds_is_stop_motor())
     {
-        fds_wait_for_sample();
+        //fds_wait_for_sample();
         fds_set_read_data(current_data & 1);
 
-        fds_wait_for_reset();
+        //fds_wait_for_reset();
         fds_set_read_data(false);
 
         current_data >>= 1;
@@ -212,10 +212,10 @@ static inline void fds_read_write_handler()
 
     while (fds_is_scan_media() && !fds_is_stop_motor())
     {
-        fds_wait_for_sample();
+        //fds_wait_for_sample();
         fds_set_read_data(current_data & 1);
 
-        fds_wait_for_reset();
+        //fds_wait_for_reset();
         fds_set_read_data(false);
 
         current_data >>= 1;

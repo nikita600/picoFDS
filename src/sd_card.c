@@ -5,8 +5,10 @@
 
 #include "sd_card.h"
 
-void read_from_sd_card(const void* buffer, uint size)
+void read_from_sd_card(const char* filename, const void* buffer, uint size)
 {
+    //const char* const filename = "ROM.DKA";
+
     sd_card_t *pSD = sd_get_by_num(0);
     FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
     if (FR_OK != fr)
@@ -15,7 +17,6 @@ void read_from_sd_card(const void* buffer, uint size)
     }
 
     FIL fil;
-    const char* const filename = "ROM.DKA";
     fr = f_open(&fil, filename, FA_READ);
     if (FR_OK != fr && FR_EXIST != fr)
         panic("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
@@ -34,8 +35,10 @@ void read_from_sd_card(const void* buffer, uint size)
     f_unmount(pSD->pcName);
 }
 
-void write_to_sd_card(const void* buffer, uint size)
+void write_to_sd_card(const char* filename, const void* buffer, uint size)
 {
+    //const char* const filename = "fds_dump.bin";
+
     sd_card_t *pSD = sd_get_by_num(0);
     FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
     if (FR_OK != fr)
@@ -44,7 +47,6 @@ void write_to_sd_card(const void* buffer, uint size)
     }
 
     FIL fil;
-    const char* const filename = "fds_dump.bin";
     fr = f_open(&fil, filename, FA_CREATE_NEW | FA_WRITE);
     if (FR_OK != fr && FR_EXIST != fr)
     {

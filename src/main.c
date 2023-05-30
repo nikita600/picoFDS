@@ -13,44 +13,64 @@
 
 #include "fds.h"
 #include "sd_card.h"
-#include "clock_hack.h"
 
-#define ONE_SECOND 1000000
-#define READ_DATA_DELAY0 5.5
-#define READ_DATA_DELAY1 6
-#define LED_DELAY 250
-#define GAP_SIZE_BITS 28300
+#define FDS_CLOCK_HZ 96400
+#define FDS_CLOCK_US 10.3734
+#define PIO_FDS_CLOCK 800000
+
+uint buffer_idx = 0;
+uint buffer_byte = 0;
+unsigned char buffer[DISK_SIDE_SIZE];
 
 //#define DEBUG 1
+
+static inline void led_set_active(bool active)
+{
+    gpio_put(LED_PIN, active);
+}
+
+static inline uint setup_fds_read_pio(PIO pio, uint read_data_pin)
+{
+    uint offset = pio_add_program(pio, &fds_read_program);
+    uint sm = pio_claim_unused_sm(pio, true);
+    fds_read_program_init(pio, sm, offset, read_data_pin);
+
+    uint len = fds_read_program.length;
+
+    uint clock_hz = clock_get_hz(clk_sys);
+    float pio_clk_div = (float)(clock_hz / (float)PIO_FDS_CLOCK);//FDS_CLOCK_HZ);
+    pio_sm_set_clkdiv(pio, sm, pio_clk_div);
+
+    return sm;
+}
+
+#define TEST_WORD 0xAAAA
 
 int main() 
 {
     stdio_init_all();
 
-    // Choose which PIO instance to use (there are two instances)
-    PIO pio = pio0;
+    read_disk_side(0, buffer);
 
-    // Our assembled program needs to be loaded into this PIO's instruction
-    // memory. This SDK function will find a location (offset) in the
-    // instruction memory where there is enough space for our program. We need
-    // to remember this location!
-    uint offset = pio_add_program(pio, &fds_read_program);
+    PIO fds_read_pio = pio0;
+    uint fds_read_sm = setup_fds_read_pio(fds_read_pio, READ_DATA_PIN);
+    
+    led_set_active(true);
+    
+    uint data = TEST_WORD;
+    uint bit_count = 0;
 
-    // Find a free state machine on our chosen PIO (erroring if there are
-    // none). Configure it to run our program, and start it, using the
-    // helper function we included in our .pio file.
-    uint sm = pio_claim_unused_sm(pio, true);
-    fds_read_program_init(pio, sm, offset, PICO_DEFAULT_LED_PIN);
+    while (true)
+    {
+        pio_sm_put_blocking(fds_read_pio, fds_read_sm, (data & 1));
 
-    // The state machine is now running. Any value we push to its TX FIFO will
-    // appear on the LED pin.
-    while (true) {
-        // Blink
-        pio_sm_put_blocking(pio, sm, 1);
-        sleep_ms(500);
-        // Blonk
-        pio_sm_put_blocking(pio, sm, 0);
-        sleep_ms(500);
+        data = data >> 1;
+        bit_count++;
+        if (bit_count >= 16)
+        {
+            data = TEST_WORD;
+            bit_count = 0;
+        }
     }
 }
 
