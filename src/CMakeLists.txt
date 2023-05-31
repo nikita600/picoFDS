@@ -19,7 +19,7 @@ add_executable(picoFDS
     hw_config.c
 )
 
-pico_generate_pio_header(picoFDS ${CMAKE_CURRENT_LIST_DIR}/fds_read.pio)
+pico_generate_pio_header(picoFDS ${CMAKE_CURRENT_LIST_DIR}/fds/read_data.pio)
 
 target_sources(picoFDS PRIVATE main.c)
 

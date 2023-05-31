@@ -8,17 +8,16 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
-#include "fds_read.pio.h"
-
 #include "fds.h"
 #include "sd_card.h"
 
+#include "read_data.pio.h"
 #include "fds/ram_adapter.h"
-
+#include "fds/disk.h"
 
 uint buffer_idx = 0;
 uint buffer_byte = 0;
-unsigned char buffer[DISK_SIDE_SIZE];
+byte buffer[DISK_SIDE_SIZE];
 
 //#define DEBUG 1
 
@@ -33,11 +32,12 @@ int main()
 {
     stdio_init_all();
 
-    pio_ctx fds_read_ctx;
     fds_ram_adapter ram_adapter = create_fds_ram_adapter();
-    setup_fds_ram_adapter(&ram_adapter, &fds_read_ctx);
 
-    //read_disk_side(0, buffer);
+    read_disk_side(0, buffer);
+
+    read_disk_data(buffer);
+
     
     led_set_active(true);
     
@@ -46,7 +46,7 @@ int main()
 
     while (true)
     {
-        pio_sm_put_blocking(fds_read_ctx.pio, fds_read_ctx.sm, (data & 1));
+        fds_ram_adapter_set_read_data(&ram_adapter, (data & 1));
 
         data = data >> 1;
         bit_count++;

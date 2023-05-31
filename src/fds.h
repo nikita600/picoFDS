@@ -5,7 +5,7 @@
 #include "hardware/gpio.h"
 
 // Constants
-#define DISK_SIDE_SIZE 0x23000 //0x10000 //65500
+#define DISK_SIDE_SIZE 65500//0x23000 //0x10000 //65500
 #define TRANSFER_FREQ_HZ 96400 / 2
 
 enum FDS_STATE

@@ -1,6 +1,3 @@
-#ifndef RAM_ADAPTER_H_
-#define RAM_ADAPTER_H_
-
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 
@@ -22,11 +19,11 @@ typedef struct
     uint read_data_pin;
     uint write_data_pin;
 
+    pio_ctx read_pio_ctx;
+
 } fds_ram_adapter;
 
 fds_ram_adapter create_fds_ram_adapter();
-
-void setup_fds_ram_adapter(fds_ram_adapter *ram_adapter, pio_ctx *fds_read_ctx);
 
 // Inputs
 void fds_ram_adapter_set_ready(fds_ram_adapter *ram_adapter, bool state);
@@ -40,5 +37,3 @@ bool fds_ram_adapter_is_scan_media(fds_ram_adapter *ram_adapter);
 bool fds_ram_adapter_is_stop_motor(fds_ram_adapter *ram_adapter);
 bool fds_ram_adapter_is_write(fds_ram_adapter *ram_adapter);
 bool fds_ram_adapter_get_write_data(fds_ram_adapter *ram_adapter);
-
-#endif

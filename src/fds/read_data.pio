@@ -1,4 +1,4 @@
-.program fds_read
+.program fds_read_data
 
 .wrap_target
 loop:
@@ -12,9 +12,9 @@ loop:
 
 % c-sdk {
 
-static inline void fds_read_program_init(PIO pio, uint sm, uint offset, uint pin)
+static inline void fds_read_data_program_init(PIO pio, uint sm, uint offset, uint pin)
 {
-    pio_sm_config c = fds_read_program_get_default_config(offset);
+    pio_sm_config c = fds_read_data_program_get_default_config(offset);
 
     sm_config_set_out_pins(&c, pin, 1);
     sm_config_set_set_pins(&c, pin, 1);

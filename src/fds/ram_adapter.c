@@ -1,8 +1,7 @@
 #include "hardware/clocks.h"
 #include "hardware/pio.h"
 
-#include "fds_read.pio.h"
-
+#include "read_data.pio.h"
 #include "ram_adapter.h"
 
 #define PIO_FDS_CLOCK 800000
@@ -24,16 +23,18 @@ fds_ram_adapter create_fds_ram_adapter()
     ram_adapter.read_data_pin = 6;
     ram_adapter.write_data_pin = 4;
 
+    setup_fds_ram_adapter(&ram_adapter);
+
     return ram_adapter;
 }
 
-static inline uint setup_fds_read_pio(PIO pio, fds_ram_adapter *fds_ram_adapter)
+uint setup_fds_read_pio(PIO pio, fds_ram_adapter *fds_ram_adapter)
 {
-    uint offset = pio_add_program(pio, &fds_read_program);
+    uint offset = pio_add_program(pio, &fds_read_data_program);
     uint sm = pio_claim_unused_sm(pio, true);
-    fds_read_program_init(pio, sm, offset, fds_ram_adapter->read_data_pin);
+    fds_read_data_program_init(pio, sm, offset, fds_ram_adapter->read_data_pin);
 
-    uint len = fds_read_program.length;
+    uint len = fds_read_data_program.length;
 
     uint clock_hz = clock_get_hz(clk_sys);
     float pio_clk_div = (float)(clock_hz / (float)PIO_FDS_CLOCK);
@@ -42,7 +43,7 @@ static inline uint setup_fds_read_pio(PIO pio, fds_ram_adapter *fds_ram_adapter)
     return sm;
 }
 
-void setup_fds_ram_adapter(fds_ram_adapter *ram_adapter, pio_ctx *fds_read_ctx)
+void setup_fds_ram_adapter(fds_ram_adapter *ram_adapter)
 {
     setup_out_pin(ram_adapter->ready_pin, false, true);
     setup_out_pin(ram_adapter->media_set_pin, false, true);
@@ -54,11 +55,11 @@ void setup_fds_ram_adapter(fds_ram_adapter *ram_adapter, pio_ctx *fds_read_ctx)
     setup_in_pin(ram_adapter->scan_media_pin, false, false);
     setup_in_pin(ram_adapter->write_data_pin, false, false);
     setup_in_pin(ram_adapter->stop_motor_pin, false, false);
+    
+    ram_adapter->read_pio_ctx.pio = pio0;
+    ram_adapter->read_pio_ctx.sm = setup_fds_read_pio(ram_adapter->read_pio_ctx.pio, ram_adapter);
 
-    fds_read_ctx->pio = pio0;
-    fds_read_ctx->sm = setup_fds_read_pio(fds_read_ctx->pio, ram_adapter);
-
-    set_active_pio_ctx(fds_read_ctx, true);
+    set_active_pio_ctx(&ram_adapter->read_pio_ctx, true);
 }
 
 // Inputs
@@ -79,7 +80,8 @@ void fds_ram_adapter_set_motor_on(fds_ram_adapter *ram_adapter, bool state)
 
 void fds_ram_adapter_set_read_data(fds_ram_adapter *ram_adapter, bool state)
 {
-    gpio_put(ram_adapter->read_data_pin, state);
+    //gpio_put(ram_adapter->read_data_pin, state);
+    pio_sm_put_blocking(ram_adapter->read_pio_ctx.pio, ram_adapter->read_pio_ctx.sm, state);
 }
 
 void fds_ram_adapter_set_writable(fds_ram_adapter *ram_adapter, bool state)
