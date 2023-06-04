@@ -13,11 +13,10 @@ add_subdirectory(../../picoSD/FatFs_SPI build)
 
 add_executable(picoFDS
     main.c
+    hw_config.c
     fds/ram_adapter.c
     fds/disk.c
-    fds.c
-    sd_card.c
-    hw_config.c
+    storage/sd_card.c
 )
 
 pico_generate_pio_header(picoFDS ${CMAKE_CURRENT_LIST_DIR}/fds/read_data.pio)

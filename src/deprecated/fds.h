@@ -145,8 +145,7 @@ static inline bool fds_get_write_data()
     return gpio_get(WRITE_DATA_PIN);     
 }
 
-void read_disk_side(int side, void* buffer);
-
-void wait_for_button_down();
+//void read_disk_side(int side, void* buffer);
+//void wait_for_button_down();
 
 #endif

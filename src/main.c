@@ -8,8 +8,7 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
-#include "fds.h"
-#include "sd_card.h"
+#include "storage/sd_card.h"
 
 #include "read_data.pio.h"
 #include "fds/ram_adapter.h"
@@ -34,7 +33,8 @@ int main()
 
     fds_ram_adapter ram_adapter = create_fds_ram_adapter();
 
-    read_disk_side(0, buffer);
+    memset(buffer, 0, DISK_SIDE_SIZE);
+    sd_card_read_file("ROM.fds", buffer, DISK_SIDE_SIZE);
 
     read_disk_data(buffer);
 

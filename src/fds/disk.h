@@ -1,5 +1,7 @@
 #include "..\types.h"
 
+#define DISK_SIDE_SIZE 65500
+
 typedef struct __attribute__((packed))
 {
     byte block_code; // 0x01

@@ -1,7 +1,9 @@
 #include <memory.h>
 
 #include "fds.h"
-#include "sd_card.h"
+#include "storage/sd_card.h"
+
+/*
 
 void wait_for_button_down()
 {
@@ -19,10 +21,8 @@ void read_disk_side(int side, void* trg_buffer)
 {
     memset(trg_buffer, 0, DISK_SIDE_SIZE);
 
-    read_from_sd_card("ROM.fds", trg_buffer, DISK_SIDE_SIZE);
+    sd_card_read_file("ROM.fds", trg_buffer, DISK_SIDE_SIZE);
 }
-
-/*
 
 uint64_t current_time = 0;
 uint64_t led_delay = 0;
