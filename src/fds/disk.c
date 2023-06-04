@@ -31,73 +31,69 @@ ushort get_fds_crc(byte* data, uint size)
   return sum;
 }
 
-fds_disk_info_block read_info_block(byte** buffer)
+fds_disk_info_block read_info_block(sd_card_file_ctx* file_ctx)
 {
     uint block_size = sizeof(fds_disk_info_block) - sizeof(ushort);
 
     fds_disk_info_block disk_info_block;
-    memcpy(&disk_info_block, *buffer, block_size);
+    sd_card_read_bytes(file_ctx, &disk_info_block, block_size);
     if (disk_info_block.block_code != 0x01)
     {
         panic("fds_disk::read - fail to read fds_disk_info_block");
     }
-    *buffer += block_size;
     
     disk_info_block.crc = get_fds_crc((byte*)&disk_info_block, (uint)block_size);
     return disk_info_block;
 }
 
-fds_disk_file_amount_block read_file_amount_block(byte** buffer)
+fds_disk_file_amount_block read_file_amount_block(sd_card_file_ctx* file_ctx)
 {
     uint block_size = sizeof(fds_disk_file_amount_block) - sizeof(ushort);
 
     fds_disk_file_amount_block file_amount_block;
-    memcpy(&file_amount_block, *buffer, block_size);
+    sd_card_read_bytes(file_ctx, &file_amount_block, block_size);
     if (file_amount_block.block_code != 0x02)
     {
         panic("fds_disk::read - fail to read fds_disk_file_amount_block");
     }
-    *buffer += block_size;
 
     file_amount_block.crc = get_fds_crc((byte*)&file_amount_block, (uint)block_size);
     return file_amount_block;
 }
 
-fds_disk_file_header_block read_file_header_block(byte** buffer)
+fds_disk_file_header_block read_file_header_block(sd_card_file_ctx* file_ctx)
 {
     uint block_size = sizeof(fds_disk_file_header_block) - sizeof(ushort);
 
     fds_disk_file_header_block file_header_block;
-    memcpy(&file_header_block, *buffer, block_size);
+    sd_card_read_bytes(file_ctx, &file_header_block, block_size);
     if (file_header_block.block_code != 0x03)
     {
         panic("fds_disk::read - fail to read fds_disk_file_header_block");
     }
-    *buffer += block_size;
 
     file_header_block.crc = get_fds_crc((byte*)&file_header_block, (uint)block_size);
     return file_header_block;
 }
 
-fds_disk_file_data_block read_file_data_block(byte** buffer, uint block_size)
+fds_disk_file_data_block read_file_data_block(sd_card_file_ctx* file_ctx, uint block_size)
 {
     fds_disk_file_data_block file_data_block;
     file_data_block.size = block_size + 1;
     file_data_block.disk_data = (byte*)malloc(file_data_block.size);
-    memcpy(file_data_block.disk_data, *buffer, file_data_block.size);
+    sd_card_read_bytes(file_ctx, file_data_block.disk_data, file_data_block.size);
     if (file_data_block.disk_data[0] != 0x04)
     {
         panic("fds_disk::read - fail to read fds_disk_file_data_block");
     }
-    *buffer += file_data_block.size;
     
     file_data_block.crc = get_fds_crc(file_data_block.disk_data, file_data_block.size);
     return file_data_block;
 }
 
+/*
 void read_disk_data(void* src_buffer)
 {
-    uint block_size = 0;
     byte* buffer = src_buffer;
 
     fds_disk_info_block disk_info_block = read_info_block(&buffer);
@@ -110,3 +106,4 @@ void read_disk_data(void* src_buffer)
         free(file_data_block.disk_data);
     }
 }
+*/

@@ -1,4 +1,5 @@
 #include "..\types.h"
+#include "..\storage\sd_card.h"
 
 #define DISK_SIDE_SIZE 65500
 
@@ -79,9 +80,9 @@ typedef struct
 
 ushort get_fds_crc(byte* data, uint size);
 
-fds_disk_info_block read_info_block(byte** buffer);
-fds_disk_file_amount_block read_file_amount_block(byte** buffer);
-fds_disk_file_header_block read_file_header_block(byte** buffer);
-fds_disk_file_data_block read_file_data_block(byte** buffer, uint block_size);
+fds_disk_info_block read_info_block(sd_card_file_ctx* file_ctx);
+fds_disk_file_amount_block read_file_amount_block(sd_card_file_ctx* file_ctx);
+fds_disk_file_header_block read_file_header_block(sd_card_file_ctx* file_ctx);
+fds_disk_file_data_block read_file_data_block(sd_card_file_ctx* file_ctx, uint block_size);
 
-void read_disk_data(void* src_buffer);
+void read_disk_data_from_sd(sd_card_file_ctx file_ctx);

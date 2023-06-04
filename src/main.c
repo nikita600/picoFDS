@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <memory.h>
 
+#include "stdlib.h"
+
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
@@ -8,15 +10,9 @@
 #include "pico/stdlib.h"
 #include "pico/binary_info.h"
 
-#include "storage/sd_card.h"
-
 #include "read_data.pio.h"
 #include "fds/ram_adapter.h"
 #include "fds/disk.h"
-
-uint buffer_idx = 0;
-uint buffer_byte = 0;
-byte buffer[DISK_SIDE_SIZE];
 
 //#define DEBUG 1
 
@@ -27,18 +23,30 @@ static inline void led_set_active(bool active)
 
 #define TEST_WORD 0xAAAA
 
+void read_rom_from_sd()
+{
+    sd_card_file_ctx file_ctx = sd_card_open_file("ROM.fds", FA_READ);
+
+    fds_disk_info_block disk_info_block = read_info_block(&file_ctx);
+    fds_disk_file_amount_block file_amount_block = read_file_amount_block(&file_ctx);
+    for (int i = 0; i < file_amount_block.file_amount; ++i)
+    {
+        fds_disk_file_header_block file_header_block = read_file_header_block(&file_ctx);
+        fds_disk_file_data_block file_data_block = read_file_data_block(&file_ctx, file_header_block.file_size);
+        free(file_data_block.disk_data);
+    }
+    
+    sd_card_close_file(file_ctx);
+}
+
 int main() 
 {
     stdio_init_all();
 
     fds_ram_adapter ram_adapter = create_fds_ram_adapter();
 
-    memset(buffer, 0, DISK_SIDE_SIZE);
-    sd_card_read_file("ROM.fds", buffer, DISK_SIDE_SIZE);
+    read_rom_from_sd();
 
-    read_disk_data(buffer);
-
-    
     led_set_active(true);
     
     uint data = TEST_WORD;
