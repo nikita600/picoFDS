@@ -1,7 +1,4 @@
-#include "pico/stdlib.h"
-#include "hardware/pio.h"
-
-typedef	unsigned char byte;
+#include "..\types.h"
 
 typedef struct __attribute__((packed))
 {
@@ -16,18 +13,18 @@ typedef struct __attribute__((packed))
     byte disk_type;
     byte unknown_0x18;
     byte boot_read_file_code;
-    byte unknown0x1A[5];
+    byte unknown_0x1A[5];
     byte manufacturing_date[3];
     byte country_code;
-    byte unknown0x23;
-    byte unknown0x24;
-    byte unknown0x25[2];
-    byte unknown0x27[5];
+    byte unknown_0x23;
+    byte unknown_0x24;
+    byte unknown_0x25[2];
+    byte unknown_0x27[5];
     byte rewrite_disk_date[3];
-    byte unknown0x2F;
-    byte unknown0x30;
+    byte unknown_0x2F;
+    byte unknown_0x30;
     byte disk_writer_serial_number[2];
-    byte unknown0x33;
+    byte unknown_0x33;
     byte disk_rewrite_count;
     byte actual_disk_side;
     byte disk_type_other;
@@ -62,7 +59,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    byte block_code; // 0x04
+    ushort size; // 0x04
     byte *disk_data;
 
     ushort crc;
@@ -78,49 +75,11 @@ typedef struct
 
 } fds_disk;
 
-static inline void read_disk_data(void* buffer)
-{
-    uint size00 = sizeof(ushort);
-    uint size01 = sizeof(fds_disk_info_block);
-    uint size02 = sizeof(fds_disk_file_amount_block);
-    uint size03 = sizeof(fds_disk_file_header_block);
-    uint size04 = sizeof(fds_disk_file_data_block);
+ushort get_fds_crc(byte* data, uint size);
 
-    byte* buffer_position = buffer;
+fds_disk_info_block read_info_block(byte** buffer);
+fds_disk_file_amount_block read_file_amount_block(byte** buffer);
+fds_disk_file_header_block read_file_header_block(byte** buffer);
+fds_disk_file_data_block read_file_data_block(byte** buffer, uint block_size);
 
-    fds_disk_info_block disk_info_block;
-    memcpy(&disk_info_block, buffer_position, sizeof(fds_disk_info_block) - size00);
-    buffer_position += sizeof(fds_disk_info_block) - size00;
-    if (disk_info_block.block_code != 0x01)
-    {
-        panic("fds_disk::read - fail to read fds_disk_info_block");
-    }
-
-    fds_disk_file_amount_block file_amount_block;
-    memcpy(&file_amount_block, buffer_position, (sizeof(fds_disk_file_amount_block) - size00));
-    buffer_position += sizeof(fds_disk_file_amount_block) - size00;
-    if (file_amount_block.block_code != 0x02)
-    {
-        panic("fds_disk::read - fail to read fds_disk_file_amount_block");
-    }
-
-    for (int i = 0; i < file_amount_block.file_amount; ++i)
-    {
-        fds_disk_file_header_block file_header_block;
-        memcpy(&file_header_block, buffer_position, (sizeof(fds_disk_file_header_block) - size00));
-        buffer_position += sizeof(fds_disk_file_header_block) - size00;
-        if (file_header_block.block_code != 0x03)
-        {
-            panic("fds_disk::read - fail to read fds_disk_file_header_block");
-        }
-
-        fds_disk_file_data_block file_data_block;
-        memcpy(&file_data_block, buffer_position, 1);
-        buffer_position += file_header_block.file_size + 1;
-        if (file_data_block.block_code != 0x04)
-        {
-            panic("fds_disk::read - fail to read fds_disk_file_data_block");
-        }
-    }
-
-}
+void read_disk_data(void* src_buffer);
