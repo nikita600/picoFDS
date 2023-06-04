@@ -11,14 +11,27 @@
 #include "pico/binary_info.h"
 
 #include "read_data.pio.h"
-#include "fds/ram_adapter.h"
 #include "fds/disk.h"
+#include "fds/fds.h"
 
 //#define DEBUG 1
 
 static inline void led_set_active(bool active)
 {
     gpio_put(LED_PIN, active);
+}
+
+static inline void led_show_error()
+{
+    bool active = false;
+    while (true)
+    {
+        led_set_active(active);
+        sleep_ms(500);
+
+        active = !active;
+    }
+    
 }
 
 #define TEST_WORD 0xAAAA
@@ -35,33 +48,29 @@ void read_rom_from_sd()
         fds_disk_file_data_block file_data_block = read_file_data_block(&file_ctx, file_header_block.file_size);
         free(file_data_block.disk_data);
     }
-    
+
     sd_card_close_file(file_ctx);
 }
 
 int main() 
 {
     stdio_init_all();
-
-    fds_ram_adapter ram_adapter = create_fds_ram_adapter();
+    
+    fds_state fds_state;
+    fds_state.ram_adapter = create_fds_ram_adapter();
+    
+    fds_state_reset(&fds_state);
 
     read_rom_from_sd();
+    fds_state.current = fds_disk_set;
 
     led_set_active(true);
-    
-    uint data = TEST_WORD;
-    uint bit_count = 0;
 
     while (true)
     {
-        fds_ram_adapter_set_read_data(&ram_adapter, (data & 1));
-
-        data = data >> 1;
-        bit_count++;
-        if (bit_count >= 16)
+        if (!fds_state_update(&fds_state))
         {
-            data = TEST_WORD;
-            bit_count = 0;
+            led_show_error();
         }
     }
 }

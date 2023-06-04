@@ -14,8 +14,9 @@ add_subdirectory(../../picoSD/FatFs_SPI build)
 add_executable(picoFDS
     main.c
     hw_config.c
-    fds/ram_adapter.c
     fds/disk.c
+    fds/fds.c
+    fds/ram_adapter.c
     storage/sd_card.c
 )
 
