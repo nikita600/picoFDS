@@ -81,8 +81,11 @@ void fds_ram_adapter_set_read_data(fds_ram_adapter *ram_adapter, bool state)
     //gpio_put(ram_adapter->read_data_pin, state);
     pio_sm_put_blocking(ram_adapter->read_pio_ctx.pio, ram_adapter->read_pio_ctx.sm, state);
 
-    while (pio_sm_is_tx_fifo_full(ram_adapter->read_pio_ctx.pio, ram_adapter->read_pio_ctx.sm)) tight_loop_contents();
-    pio_sm_put(ram_adapter->read_pio_ctx.pio, ram_adapter->read_pio_ctx.sm, state);
+    //while (pio_sm_is_tx_fifo_full(ram_adapter->read_pio_ctx.pio, ram_adapter->read_pio_ctx.sm))
+    //{
+    //    tight_loop_contents();
+    //}
+    //pio_sm_put(ram_adapter->read_pio_ctx.pio, ram_adapter->read_pio_ctx.sm, state);
 }
 
 void fds_ram_adapter_set_writable(fds_ram_adapter *ram_adapter, bool state)

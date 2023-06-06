@@ -1,6 +1,7 @@
 #include "pico\stdlib.h"
 #include "..\types.h"
 #include "ram_adapter.h"
+#include "disk.h"
 
 enum FDS_STATE_ID
 {
@@ -20,10 +21,16 @@ typedef struct
     enum FDS_STATE_ID current;
     fds_ram_adapter ram_adapter;
 
-    ushort gap_size;
-    
+    fds_disk disk;
+
+    uint block_idx;
+    uint block_offset;
+
+    uint gap_size;
+    enum FDS_STATE_ID next_gap_state;
+
     byte read_data;
-    byte bit_count;
+    uint bit_count;
 
 } fds_state;
 

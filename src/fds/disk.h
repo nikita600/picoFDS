@@ -69,12 +69,22 @@ typedef struct __attribute__((packed))
 
 } fds_disk_file_data_block;
 
+typedef struct
+{
+    uint size;
+    byte *data;
+} fds_block_raw;
+
 typedef struct 
 {
     fds_disk_info_block         info_block;
     fds_disk_file_amount_block  file_amount_block;
+    uint files_count;
     fds_disk_file_header_block  *file_header_blocks;
     fds_disk_file_data_block    *file_data_blocks;
+
+    uint raw_blocks_count;
+    fds_block_raw *raw_blocks;
 
 } fds_disk;
 
