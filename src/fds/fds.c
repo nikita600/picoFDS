@@ -57,7 +57,7 @@ static inline void fds_disk_set_state(fds_state *state)
 static inline void fds_scan_wait_state(fds_state *state)
 {
     if (fds_ram_adapter_is_scan_media(&state->ram_adapter) 
-        && fds_ram_adapter_is_stop_motor(&state->ram_adapter))
+        && !fds_ram_adapter_is_stop_motor(&state->ram_adapter))
     {
         state->current = fds_motor_on;
     }
@@ -65,31 +65,39 @@ static inline void fds_scan_wait_state(fds_state *state)
 
 static inline void fds_motor_on_state(fds_state *state)
 {
-    fds_ram_adapter_set_motor_on(&state->ram_adapter, true);
-
     state->gap_size = 28300;
     state->read_data = 0xFF;
 
     set_active_pio_ctx(&state->ram_adapter.read_pio_ctx, true);
+
+    fds_ram_adapter_set_motor_on(&state->ram_adapter, true);
+
     state->next_gap_state = fds_ready;
     state->current = fds_send_gap;
 }
 
 static inline void fds_send_gap_state(fds_state *state)
 {
-    fds_ram_adapter_set_read_data(&state->ram_adapter, 1);
-
-    state->bit_count++;
-
-    if (state->bit_count >= state->gap_size)
+    while (fds_ram_adapter_is_scan_media(&state->ram_adapter) 
+        && !fds_ram_adapter_is_stop_motor(&state->ram_adapter))
     {
-        state->read_data = 0x80;
-        state->current = fds_send_gap_end;
+        fds_ram_adapter_set_read_data(&state->ram_adapter, 1);
+
+        state->bit_count++;
+
+        if (state->bit_count >= state->gap_size)
+        {
+            state->read_data = 0x80;
+            state->current = fds_send_gap_end;
+
+            return;
+        }
     }
 }
 
 static inline void fds_send_gap_end_state(fds_state *state)
 {
+    // TODO: MFM
     fds_ram_adapter_set_read_data(&state->ram_adapter, state->read_data & 1);
 
     state->read_data = state->read_data >> 1;
@@ -144,6 +152,7 @@ static inline void fds_read_state(fds_state *state)
         state->bit_count = 0;
     }
 
+    // TODO: MFM
     fds_ram_adapter_set_read_data(&state->ram_adapter, state->read_data & 1);
     state->read_data = state->read_data >> 1;
     state->bit_count++;
